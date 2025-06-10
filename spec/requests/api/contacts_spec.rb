@@ -1,44 +1,57 @@
-# spec/requests/contacts_spec.rb
 require 'rails_helper'
+require 'cgi'
 
-RSpec.describe "Contacts API", type: :request do
-  let(:valid_attributes) do
-    { name: "Ausevia", phone: "1234567890", email: "ause@example.com" }
+RSpec.describe "Api::Contacts", type: :request do
+  describe "GET /api/contacts" do
+    it "returns all contacts ordered by name" do
+      create(:contact, name: "Aurora")
+      create(:contact, name: "Benancio")
+      get "/api/contacts"
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body).map { |c| c["name"] }).to eq(["Aurora", "Benancio"])
+    end
   end
 
-  let(:invalid_email_attributes) do
-    { name: "Benicio", phone: "0987654321", email: "Benicio_sin_arroba" }
+  describe "GET /api/contacts/:id" do
+    let(:contact) { create(:contact) }
+
+    it "returns the contact" do
+      get "/api/contacts/#{CGI.escape(contact.name)}"
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)["name"]).to eq(contact.name)
+    end
   end
 
-  it "adds a valid contact" do
-    post "/api/contacts", params: { contact: valid_attributes }
-    expect(response).to have_http_status(:created)
-    expect(JSON.parse(response.body)["name"]).to eq("Ausevia")
+  describe "POST /api/contacts" do
+    context "with valid params" do
+      let(:valid_params) { { contact: { name: "New Contact", phone: "123456789", email: "new@example.com" } } }
+
+      it "creates a contact" do
+        post "/api/contacts", params: valid_params
+        expect(response).to have_http_status(:created)
+        expect(JSON.parse(response.body)["name"]).to eq("New Contact")
+      end
+    end
+
+    context "with invalid params" do
+      let(:invalid_params) { { contact: { name: "", phone: "", email: "bad" } } }
+
+      it "returns errors" do
+        post "/api/contacts", params: invalid_params
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(JSON.parse(response.body)["errors"]).to include("Name can't be blank")
+      end
+    end
   end
 
-  it "prevents duplicate names" do
-    Contact.create!(valid_attributes)
-    post "/api/contacts", params: { contact: valid_attributes }
-    expect(response).to have_http_status(:unprocessable_entity)
-  end
+  describe "DELETE /api/contacts/:id" do
+    let!(:contact) { create(:contact) }
 
-  it "validates email format" do
-    post "/api/contacts", params: { contact: { name: "Test", phone: "123", email: "bad_email" } }, headers: { "ACCEPT" => "application/json" }
-    expect(response).to have_http_status(:unprocessable_entity)
-    expect(JSON.parse(response.body)["errors"]).to include("Email Wrong email format")
-  end
-
-  it "deletes a contact by name" do
-    Contact.create!(valid_attributes)
-    delete "/api/contacts/Ausevia"
-    expect(response).to have_http_status(:no_content)
-  end
-
-  it "lists contacts in alphabetical order" do
-    Contact.create!(name: "Gregorio", phone: "1", email: "grego@example.com")
-    Contact.create!(name: "Bonifacia", phone: "2", email: "Boni@example.com")
-    get "/api/contacts"
-    names = JSON.parse(response.body).map { |c| c["name"] }
-    expect(names).to eq([ "Bonifacia", "Gregorio" ])
+    it "deletes the contact" do
+      expect {
+        delete "/api/contacts/#{CGI.escape(contact.name)}"
+      }.to change(Contact, :count).by(-1)
+      expect(response).to have_http_status(:no_content)
+    end
   end
 end

@@ -1,6 +1,8 @@
 # app/controllers/api/contacts_controller.rb
 class Api::ContactsController < ApplicationController
-  before_action :set_contact, only: [ :show, :destroy ]
+  require 'cgi'
+  
+  before_action :set_contact, only: [:show, :destroy]
 
   def index
     @contacts = Contact.order(:name)
@@ -12,11 +14,11 @@ class Api::ContactsController < ApplicationController
   end
 
   def create
-    contact = Contact.new(contact_params)
-    if contact.save
-      render json: contact, status: :created
+    service = CreateContactService.new(contact_params)
+    if service.call
+      render json: service.contact, status: :created
     else
-      render json: { errors: contact.errors.full_messages }, status: :unprocessable_entity
+      render json: { errors: service.errors }, status: :unprocessable_entity
     end
   end
 
@@ -27,9 +29,11 @@ class Api::ContactsController < ApplicationController
 
   private
 
+
   def set_contact
-    @contact = Contact.find_by!(name: params[:id])
+    @contact = Contact.find_by!(name: CGI.unescape(params[:id]))
   end
+
 
   def contact_params
     params.require(:contact).permit(:name, :phone, :email)
