@@ -39,7 +39,6 @@ RSpec.describe "Contacts API", type: :request do
     Contact.create!(name: "Bonifacia", phone: "2", email: "Boni@example.com")
     get "/api/contacts"
     names = JSON.parse(response.body).map { |c| c["name"] }
-    expect(names).to eq(["Bonifacia", "Gregorio"])
+    expect(names).to eq([ "Bonifacia", "Gregorio" ])
   end
-
 end

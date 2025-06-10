@@ -1,6 +1,6 @@
 # app/controllers/api/contacts_controller.rb
 class Api::ContactsController < ApplicationController
-  before_action :set_contact, only: [:show, :destroy]
+  before_action :set_contact, only: [ :show, :destroy ]
 
   def index
     @contacts = Contact.order(:name)
@@ -35,4 +35,3 @@ class Api::ContactsController < ApplicationController
     params.require(:contact).permit(:name, :phone, :email)
   end
 end
-
